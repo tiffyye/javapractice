@@ -36,6 +36,19 @@
 		private String token;
 		private int tokType;
 		
+		//Array for variables
+		private double vars[] = new double[26];
+		
+		//Return the value of a variable.
+		private double findVar(String vname) throws ParserException
+		{
+			if(!Character.isLetter(vname.charAt(0))) {
+				handleErr(SYNTAX);
+				return 0.0;
+			}
+			return vars[Character.toUpperCase(vname.charAt(0))-'A'];
+		}
+		
 		//parser entry point
 		public double evaluate(String expstr) throws ParserException
 		{
@@ -48,11 +61,54 @@
 				handleErr(NOEXP); //no expression present
 			
 			//Parse and Evaluate the expression
-			result = evalExp2();
+			result = evalExp1();
 			if(!token.equals(EOE)) //last token must be EOE
 				handleErr(SYNTAX);
 			
 			return result;
+		}
+		
+		//Return a token to the input stream.
+		private void putBack()
+		{
+			if(token == EOE) return;
+			for(int i = 0; i < token.length(); i++) expIdx--;
+		}
+		
+		//process an assignment
+		private double evalExp1() throws ParserException
+		{
+			double result;
+			int varIdx;
+			int ttokType;
+			String temptoken;
+			
+			if(tokType == VARIABLE) 
+			{
+				//save old token
+				temptoken = new String(token);
+				ttokType = tokType;
+				
+				//compute the index of the variable.
+				varIdx = Character.toUpperCase(token.charAt(0)) - 'A';
+				
+				getToken();
+				if(!token.equals("=")) {
+					putBack(); //return current token
+					//restore old token -- not an assignment
+					token = new String(temptoken);
+					tokType = ttokType;
+				}
+				else
+				{
+					getToken(); //get next part of exp
+					result = evalExp2();
+					vars[varIdx] = result;
+					return result;
+				}
+			}
+			return evalExp2();
+				
 		}
 		
 		//Add or subtract two terms
@@ -63,7 +119,7 @@
 			double partialResult;
 			
 			result = evalExp3();
-			while( (op=token.charAt(0)) == '+' || op == '-')
+			while( (op = token.charAt(0)) == '+' || op == '-')
 			{
 					getToken();
 					partialResult = evalExp3();
@@ -195,6 +251,10 @@
 				{
 					handleErr(SYNTAX);
 				}
+				getToken();
+				break;
+			case VARIABLE:
+				result = findVar(token);
 				getToken();
 				break;
 			default:
